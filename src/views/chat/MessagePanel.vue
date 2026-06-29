@@ -4,7 +4,7 @@ import { NAvatar, NInput, NButton, NSpin, NIcon, NModal } from 'naive-ui'
 import { AttachOutline } from '@vicons/ionicons5'
 import { useChatStore } from '@/stores/useChatStore'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { loadImage } from '@/utils/image'
+import { loadImage, downloadFile } from '@/utils/image'
 import type { ChatMessage, ChatAttachment } from '@/types/view'
 
 const chatStore = useChatStore()
@@ -41,6 +41,16 @@ async function tryLoadImage(rawUrl: string) {
 function openPreview(url: string) {
   previewUrl.value = loadedImages.value[url] || url
   previewVisible.value = true
+}
+
+/** 下载文件（带认证头） */
+async function handleDownload(att: ChatAttachment) {
+  if (!att.url) return
+  try {
+    await downloadFile(att.url, att.title || att.name)
+  } catch {
+    window['$message']?.error('文件下载失败')
+  }
 }
 
 // ---- 滚动 ----
@@ -256,7 +266,7 @@ function handlePaste(e: ClipboardEvent) {
                   <div v-else-if="att.type === 'video' && att.url" class="att-file-card">
                     <span class="att-file-icon">🎬</span>
                     <div class="att-file-info">
-                      <a :href="att.url" target="_blank" class="att-file-name">{{ att.title || '视频文件' }}</a>
+                      <span class="att-file-name link" @click="handleDownload(att)">{{ att.title || '视频文件' }}</span>
                     </div>
                   </div>
 
@@ -272,7 +282,7 @@ function handlePaste(e: ClipboardEvent) {
                   <div v-else-if="att.url" class="att-file-card">
                     <span class="att-file-icon">📎</span>
                     <div class="att-file-info">
-                      <a :href="att.url" target="_blank" class="att-file-name">{{ att.title || att.name || '未知文件' }}</a>
+                      <span class="att-file-name link" @click="handleDownload(att)">{{ att.title || att.name || '未知文件' }}</span>
                       <span v-if="att.size" class="att-file-size">{{ formatFileSize(att.size) }}</span>
                     </div>
                   </div>
@@ -327,7 +337,7 @@ function handlePaste(e: ClipboardEvent) {
                   <div v-else-if="att.type === 'video' && att.url" class="att-file-card">
                     <span class="att-file-icon">🎬</span>
                     <div class="att-file-info">
-                      <a :href="att.url" target="_blank" class="att-file-name">{{ att.title || '视频文件' }}</a>
+                      <span class="att-file-name link" @click="handleDownload(att)">{{ att.title || '视频文件' }}</span>
                     </div>
                   </div>
 
@@ -341,7 +351,7 @@ function handlePaste(e: ClipboardEvent) {
                   <div v-else-if="att.url" class="att-file-card">
                     <span class="att-file-icon">📎</span>
                     <div class="att-file-info">
-                      <a :href="att.url" target="_blank" class="att-file-name">{{ att.title || att.name || '未知文件' }}</a>
+                      <span class="att-file-name link" @click="handleDownload(att)">{{ att.title || att.name || '未知文件' }}</span>
                       <span v-if="att.size" class="att-file-size">{{ formatFileSize(att.size) }}</span>
                     </div>
                   </div>
@@ -488,6 +498,11 @@ function handlePaste(e: ClipboardEvent) {
 
 .att-file-name:hover {
   color: #2196f3;
+  text-decoration: underline;
+}
+
+.att-file-name.link {
+  cursor: pointer;
   text-decoration: underline;
 }
 

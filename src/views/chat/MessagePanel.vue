@@ -322,9 +322,12 @@ function handlePaste(e: ClipboardEvent) {
             </div>
           </template>
 
-          <!-- 自己消息：内容在右 -->
+          <!-- 自己消息：头像在右 -->
           <template v-else>
             <div style="margin-left: auto; text-align: right; max-width: 520px;">
+              <div style="font-size: 12px; color: var(--im-text-color-grey); margin-bottom: 2px;">
+                {{ msg.senderName }}
+              </div>
               <!-- 文本内容 -->
               <div
                 v-if="msg.content"
@@ -400,6 +403,11 @@ function handlePaste(e: ClipboardEvent) {
                 {{ formatTime(msg.timestamp) }}
               </div>
             </div>
+            <n-avatar
+              :src="`https://ui-avatars.com/api/?name=${msg.senderName}&background=1890ff&color=fff&size=36`"
+              :size="36"
+              round
+            />
           </template>
         </div>
 

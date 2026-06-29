@@ -5,6 +5,7 @@ import { AttachOutline } from '@vicons/ionicons5'
 import { useChatStore } from '@/stores/useChatStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { loadImage, downloadFile } from '@/utils/image'
+import EmojiPicker from '@/components/EmojiPicker.vue'
 import type { ChatMessage, ChatAttachment } from '@/types/view'
 
 const chatStore = useChatStore()
@@ -36,6 +37,11 @@ async function tryLoadImage(rawUrl: string) {
   } finally {
     imageLoading.value[rawUrl] = false
   }
+}
+
+/** 插入表情到输入框 */
+function onEmojiSelect(emoji: string) {
+  inputText.value += emoji
 }
 
 function openPreview(url: string) {
@@ -245,15 +251,26 @@ function handlePaste(e: ClipboardEvent) {
                   <!-- 图片 -->
                   <div
                     v-if="att.type === 'image' && att.url"
-                    style="max-width: 360px; cursor: pointer;"
+                    style="max-width: 360px;"
                   >
                     <n-spin v-if="imageLoading[att.url]" size="small" />
-                    <img
-                      v-else-if="loadedImages[att.url]"
-                      :src="loadedImages[att.url]"
-                      style="max-width: 360px; max-height: 300px; border-radius: 8px; object-fit: cover;"
-                      @click="openPreview(att.url)"
-                    />
+                    <template v-else-if="loadedImages[att.url]">
+                      <img
+                        :src="loadedImages[att.url]"
+                        style="max-width: 360px; max-height: 300px; border-radius: 8px 8px 0 0; object-fit: cover; cursor: pointer; display: block;"
+                        @click="openPreview(att.url)"
+                      />
+                      <div
+                        style="display: flex; align-items: center; justify-content: space-between; background: var(--im-message-left-bg-color); padding: 4px 10px; border-radius: 0 0 8px 8px; font-size: 12px;"
+                      >
+                        <span style="color: var(--im-text-color-grey);">图片</span>
+                        <span
+                          class="att-file-name link"
+                          style="font-size: 12px; color: #2196f3;"
+                          @click="handleDownload(att)"
+                        >下载</span>
+                      </div>
+                    </template>
                     <div
                       v-else
                       style="width: 200px; height: 120px; background: var(--im-message-left-bg-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--im-text-color-grey); font-size: 13px;"
@@ -317,15 +334,26 @@ function handlePaste(e: ClipboardEvent) {
                   <!-- 图片：self -->
                   <div
                     v-if="att.type === 'image' && att.url"
-                    style="max-width: 360px; cursor: pointer;"
+                    style="max-width: 360px;"
                   >
                     <n-spin v-if="imageLoading[att.url]" size="small" />
-                    <img
-                      v-else-if="loadedImages[att.url]"
-                      :src="loadedImages[att.url]"
-                      style="max-width: 360px; max-height: 300px; border-radius: 8px; object-fit: cover;"
-                      @click="openPreview(att.url)"
-                    />
+                    <template v-else-if="loadedImages[att.url]">
+                      <img
+                        :src="loadedImages[att.url]"
+                        style="max-width: 360px; max-height: 300px; border-radius: 8px 8px 0 0; object-fit: cover; cursor: pointer; display: block;"
+                        @click="openPreview(att.url)"
+                      />
+                      <div
+                        style="display: flex; align-items: center; justify-content: space-between; background: var(--im-message-right-bg-color); padding: 4px 10px; border-radius: 0 0 8px 8px; font-size: 12px;"
+                      >
+                        <span style="color: var(--im-text-color-grey);">图片</span>
+                        <span
+                          class="att-file-name link"
+                          style="font-size: 12px; color: #2196f3;"
+                          @click="handleDownload(att)"
+                        >下载</span>
+                      </div>
+                    </template>
                     <div
                       v-else
                       style="width: 200px; height: 120px; background: var(--im-message-right-bg-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--im-text-color-grey); font-size: 13px;"
@@ -419,6 +447,9 @@ function handlePaste(e: ClipboardEvent) {
           <n-icon size="20"><attach-outline /></n-icon>
         </template>
       </n-button>
+
+      <!-- 表情按钮 -->
+      <EmojiPicker @select="onEmojiSelect" />
 
       <n-input
         v-model:value="inputText"

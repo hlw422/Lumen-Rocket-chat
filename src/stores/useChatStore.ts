@@ -15,9 +15,9 @@ import {
   fetchChatDelete
 } from '@/apis/rocket-api'
 import { ddpClient } from '@/services/ddp-client'
-import { getAuthData } from '@/utils/auth'
-import type { RCRoom, RCMessage } from '@/types/rocket'
-import type { Conversation, ChatMessage, ConversationType } from '@/types/view'
+import { getAuthData, getAuthHeaders } from '@/utils/auth'
+import type { RCRoom, RCMessage, RCAttachment } from '@/types/rocket'
+import type { Conversation, ChatMessage, ChatAttachment, ConversationType } from '@/types/view'
 
 export const useChatStore = defineStore('chat', () => {
   // ---- state ----
@@ -50,6 +50,9 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function rcMessageToChatMessage(msg: RCMessage): ChatMessage {
+    // 映射附件
+    const attachments: ChatAttachment[] | undefined = msg.attachments?.map(rcAttToChatAtt)
+
     return {
       id: msg._id,
       roomId: msg.rid,
@@ -58,7 +61,37 @@ export const useChatStore = defineStore('chat', () => {
       senderName: msg.u.name || msg.u.username,
       timestamp: new Date(msg.ts).getTime(),
       editedAt: msg.editedAt ? new Date(msg.editedAt).getTime() : undefined,
-      isEdited: !!msg.editedAt
+      isEdited: !!msg.editedAt,
+      attachments,
+      type: msg.t
+    }
+  }
+
+  /** 将 Rocket.Chat Attachment 转为视图层 ChatAttachment */
+  function rcAttToChatAtt(att: RCAttachment): ChatAttachment {
+    let type: ChatAttachment['type'] = 'file'
+    let url = ''
+    if (att.image_url) {
+      type = 'image'
+      url = att.image_url
+    } else if (att.video_url) {
+      type = 'video'
+      url = att.video_url
+    } else if (att.audio_url) {
+      type = 'audio'
+      url = att.audio_url
+    } else {
+      url = att.title_link || ''
+    }
+    return {
+      type,
+      url,
+      title: att.title,
+      name: att.title,
+      description: att.description || att.text,
+      thumbUrl: att.thumb_url,
+      color: att.color,
+      titleLinkDownload: att.title_link_download
     }
   }
 
@@ -236,6 +269,57 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   /**
+   * 上传文件到房间（自动发送为一条消息）
+   */
+  async function uploadFile(roomId: string, file: File, description?: string): Promise<ChatMessage | null> {
+    const auth = getAuthHeaders()
+    if (!auth) {
+      console.error('[useChatStore] uploadFile: not authenticated')
+      return null
+    }
+
+    const formData = new FormData()
+    formData.append('file', file)
+    if (description) {
+      formData.append('description', description)
+    }
+
+    const baseUrl = import.meta.env.VITE_BASE_API || ''
+    const url = `${baseUrl}/api/v1/rooms.upload/${roomId}`
+
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-Auth-Token': auth['X-Auth-Token'],
+          'X-User-Id': auth['X-User-Id']
+        },
+        body: formData,
+        // 大文件上传不设超时
+      })
+
+      const body = await resp.json()
+      if (!resp.ok) {
+        throw new Error(body?.error || 'Upload failed')
+      }
+
+      // rooms.upload 返回 { success: true, message: RCMessage }
+      if (body?.message) {
+        const msg = rcMessageToChatMessage(body.message)
+        if (!messages.value.some((m) => m.id === msg.id)) {
+          messages.value.push(msg)
+        }
+        return msg
+      }
+
+      return null
+    } catch (err: any) {
+      console.error('[useChatStore] uploadFile failed:', err)
+      return null
+    }
+  }
+
+  /**
    * 删除消息
    */
   async function deleteMessage(roomId: string, msgId: string): Promise<boolean> {
@@ -274,6 +358,7 @@ export const useChatStore = defineStore('chat', () => {
     selectConversation,
     loadMessages,
     sendMessage,
+    uploadFile,
     deleteMessage,
     connectDdp,
     disconnectDdp,

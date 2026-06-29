@@ -61,6 +61,18 @@ export default defineConfig({
         target: 'http://192.168.1.189:3000',
         changeOrigin: true,
         ws: true
+      },
+      '/file-upload': {
+        target: 'http://192.168.1.189:3000',
+        changeOrigin: true
+      },
+      '/avatar': {
+        target: 'http://192.168.1.189:3000',
+        changeOrigin: true
+      },
+      '/ufs': {
+        target: 'http://192.168.1.189:3000',
+        changeOrigin: true
       }
     }
   },

@@ -40,7 +40,12 @@ export interface ChatAttachment {
   type: 'image' | 'video' | 'audio' | 'file'
   url: string
   title?: string
+  name?: string
+  size?: number
   description?: string
+  thumbUrl?: string
+  color?: string
+  titleLinkDownload?: boolean
 }
 
 /** 联系人/用户 */

@@ -28,6 +28,11 @@ export const useChatStore = defineStore('chat', () => {
   const messagesLoading = ref(false)
   const ddpConnected = ref(false)
 
+  // 搜索
+  const searchResults = ref<ChatMessage[]>([])
+  const searchLoading = ref(false)
+  const searchQuery = ref('')
+
   // ---- getters ----
   const currentConversation = computed(() =>
     conversations.value.find((c) => c.id === currentRoomId.value) ?? null
@@ -334,6 +339,67 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   /**
+   * 搜索当前会话消息（加载 200 条历史后本地过滤）
+   */
+  async function searchMessages(query: string): Promise<void> {
+    const q = query.trim()
+    if (!q) {
+      searchResults.value = []
+      searchQuery.value = ''
+      return
+    }
+    if (!currentRoomId.value) return
+    searchLoading.value = true
+    searchQuery.value = q
+
+    try {
+      const roomId = currentRoomId.value
+      const conv = conversations.value.find((c) => c.id === roomId)
+      let res: any
+      const params = { roomId, count: 200 }
+
+      switch (conv?.type) {
+        case 'channel':
+          res = await fetchChannelsMessages(params)
+          break
+        case 'group':
+          res = await fetchGroupsMessages(params)
+          break
+        case 'direct':
+        default:
+          res = await fetchImMessages(params)
+          break
+      }
+
+      if (res?.messages) {
+        const all = res.messages.map(rcMessageToChatMessage) as ChatMessage[]
+        const lower = q.toLowerCase()
+        searchResults.value = all
+          .filter((m: ChatMessage) => {
+            if (m.content.toLowerCase().includes(lower)) return true
+            if (m.attachments) {
+              for (const a of m.attachments) {
+                const name = (a.name || a.title || '').toLowerCase()
+                if (name.includes(lower)) return true
+              }
+            }
+            return false
+          })
+          .sort((a: ChatMessage, b: ChatMessage) => b.timestamp - a.timestamp)
+      }
+    } catch (err) {
+      console.error('[useChatStore] searchMessages failed:', err)
+    } finally {
+      searchLoading.value = false
+    }
+  }
+
+  function clearSearch(): void {
+    searchResults.value = []
+    searchQuery.value = ''
+  }
+
+  /**
    * 清理资源
    */
   function dispose(): void {
@@ -362,6 +428,11 @@ export const useChatStore = defineStore('chat', () => {
     deleteMessage,
     connectDdp,
     disconnectDdp,
-    dispose
+    dispose,
+    searchResults,
+    searchLoading,
+    searchQuery,
+    searchMessages,
+    clearSearch
   }
 })

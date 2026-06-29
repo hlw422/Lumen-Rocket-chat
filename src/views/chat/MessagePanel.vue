@@ -1,11 +1,12 @@
 <script lang="ts" setup>
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { NAvatar, NInput, NButton, NSpin, NIcon, NModal } from 'naive-ui'
-import { AttachOutline } from '@vicons/ionicons5'
+import { AttachOutline, SearchOutline } from '@vicons/ionicons5'
 import { useChatStore } from '@/stores/useChatStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { loadImage, downloadFile } from '@/utils/image'
 import EmojiPicker from '@/components/EmojiPicker.vue'
+import MessageSearch from '@/components/MessageSearch.vue'
 import type { ChatMessage, ChatAttachment } from '@/types/view'
 
 const chatStore = useChatStore()
@@ -24,6 +25,7 @@ const imageLoading = ref<Record<string, boolean>>({})
 /** 图片预览 */
 const previewUrl = ref('')
 const previewVisible = ref(false)
+const showSearch = ref(false)
 
 /** 加载图片（blob URL） */
 async function tryLoadImage(rawUrl: string) {
@@ -202,13 +204,21 @@ function handlePaste(e: ClipboardEvent) {
       <span style="font-weight: 500; font-size: 16px; color: var(--im-text-color);">
         {{ chatStore.currentConversation?.name || '选择一个会话' }}
       </span>
-      <span v-if="chatStore.currentConversation?.usersCount" style="font-size: 12px; color: var(--im-text-color-grey);">
-        {{ chatStore.currentConversation.usersCount }} 人
-      </span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span v-if="chatStore.currentRoomId" style="cursor: pointer;" @click="showSearch = !showSearch">
+          <n-icon :component="SearchOutline" size="20" :color="showSearch ? '#1890ff' : undefined" />
+        </span>
+        <span v-if="chatStore.currentConversation?.usersCount && !showSearch" style="font-size: 12px; color: var(--im-text-color-grey);">
+          {{ chatStore.currentConversation.usersCount }} 人
+        </span>
+      </div>
     </div>
 
-    <!-- 消息列表 -->
+    <!-- 搜索面板 / 消息列表（共享同一区域） -->
+    <MessageSearch v-if="showSearch" @close="showSearch = false" style="flex: 1;" />
+
     <div
+      v-else
       ref="messagesContainer"
       class="me-scrollbar"
       style="flex: 1; padding: 15px; overflow-y: auto;"
@@ -406,7 +416,7 @@ function handlePaste(e: ClipboardEvent) {
 
     <!-- 已选文件预览 -->
     <div
-      v-if="selectedFiles.length > 0"
+      v-if="selectedFiles.length > 0 && !showSearch"
       style="padding: 8px 15px; display: flex; gap: 8px; flex-wrap: wrap; background: var(--im-bg-color); border-top: 1px solid var(--border-color);"
     >
       <div
@@ -422,7 +432,7 @@ function handlePaste(e: ClipboardEvent) {
 
     <!-- 输入框 -->
     <div
-      v-if="chatStore.currentRoomId"
+      v-if="chatStore.currentRoomId && !showSearch"
       class="border-top"
       style="padding: 12px 15px; display: flex; gap: 10px; align-items: flex-end; background: var(--im-bg-color);"
     >
